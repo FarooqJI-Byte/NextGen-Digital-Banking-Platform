@@ -5,6 +5,7 @@ All notable changes to the NextGen Digital Banking Platform will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+- 2026-08-11: Created `develop` branch and integrated PR #1 (`nikhitamdesai:main`) containing Account and Card backend modules, DTOs, repositories, services, tests, and frontend `account-card` UI components. Resolved compilation and state machine validation issues; verified cleanly with `mvn test` (31 passing tests) and `npm run build`.
 - 2026-08-06: Redesigned `WORKFLOW-GUIDE.html` — clean light-mode HTML web tool guiding developers through the ChatGPT <-> Antigravity iteration loop. Features strategy prompt generator (instructing ChatGPT not to guess codebase technicalities), developer attention notice rules, and 1-click prompt copiers.
 - 2026-08-06: Created `AI-SESSION-STARTER.md` — master session starter prompt for teammates to paste into their AI IDE at the start of any coding session to load full context and get guided module implementation.
 - 2026-08-05: Created `TEAM-MESSAGE.md` — final personalized team kickoff brief with module assignments (Farooq/Nikitha/Divya+Ankit/Mithun), build order, 4 integration checkpoints, per-person reading list, 5 integration rules, Definition of Done checklist, and 15 Aug deadline.

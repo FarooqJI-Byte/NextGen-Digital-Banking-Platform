@@ -160,7 +160,7 @@ public class Account {
     }
 
     public void close() {
-        if (this.status != AccountStatus.CLOSURE_REQUESTED) {
+        if (this.status != AccountStatus.CLOSURE_REQUESTED && this.status != AccountStatus.ACTIVE) {
             throw new BusinessException(
                     "Cannot close account in state: " + this.status,
                     HttpStatus.BAD_REQUEST,
@@ -180,11 +180,11 @@ public class Account {
 
     // Value Object helper methods
     public Money getBalanceAsMoney() {
-        return new Money(balance, Currency.getInstance(currency));
+        return new Money(balance, currency);
     }
 
     public Money getAvailableBalanceAsMoney() {
-        return new Money(availableBalance, Currency.getInstance(currency));
+        return new Money(availableBalance, currency);
     }
 
     // Getters and Setters
