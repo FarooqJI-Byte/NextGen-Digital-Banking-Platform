@@ -1,0 +1,54 @@
+package com.nextgen.bank.auth.controller;
+
+import com.nextgen.bank.auth.dto.LoginRequestDto;
+import com.nextgen.bank.auth.dto.LoginResponseDto;
+import com.nextgen.bank.auth.dto.RegisterRequestDto;
+import com.nextgen.bank.auth.dto.RegisterResponseDto;
+import com.nextgen.bank.auth.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<RegisterResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
+        RegisterResponseDto response = authService.register(requestDto);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDto> login(
+            @Valid @RequestBody LoginRequestDto requestDto,
+            HttpServletRequest request
+    ) {
+        String ipAddress = extractClientIp(request);
+        String userAgent = request.getHeader("User-Agent");
+
+        LoginResponseDto response = authService.login(requestDto, ipAddress, userAgent);
+        return ResponseEntity.ok(response);
+    }
+
+    private String extractClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+}
