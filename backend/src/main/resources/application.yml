@@ -56,8 +56,12 @@ resilience4j:
       aiLoanService:
         timeoutDuration: 1500ms
 
-# Scheduling for Outbox Relay Worker
+# Application Properties
 app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
   outbox:
     relay:
       cron: "*/5 * * * * *" # Run every 5 seconds
