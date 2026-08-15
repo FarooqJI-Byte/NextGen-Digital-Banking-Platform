@@ -13,6 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -78,6 +79,28 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    public boolean isLockedOut() {
+        return lockoutUntil != null && Instant.now().isBefore(lockoutUntil);
+    }
+
+    public void incrementFailedAttempts() {
+        if (lockoutUntil != null && Instant.now().isAfter(lockoutUntil)) {
+            // Previous lockout has expired; start a fresh failed attempt counter
+            this.failedLoginAttempts = 1;
+            this.lockoutUntil = null;
+        } else {
+            this.failedLoginAttempts++;
+            if (this.failedLoginAttempts >= 5) {
+                this.lockoutUntil = Instant.now().plus(15, ChronoUnit.MINUTES);
+            }
+        }
+    }
+
+    public void resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockoutUntil = null;
     }
 
     public UUID getUserId() {

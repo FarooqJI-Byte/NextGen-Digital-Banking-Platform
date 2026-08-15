@@ -26,6 +26,9 @@ public class Customer {
     @Column(name = "customer_id", nullable = false, updatable = false)
     private UUID customerId;
 
+    @Column(name = "customer_number", nullable = false, unique = true, updatable = false, length = 20)
+    private String customerNumber;
+
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
@@ -63,7 +66,12 @@ public class Customer {
     }
 
     public Customer(UUID userId, String firstName, String lastName, LocalDate dateOfBirth, String phone, String email, KYCStatus kycStatus, RiskCategory riskCategory) {
+        this(userId, null, firstName, lastName, dateOfBirth, phone, email, kycStatus, riskCategory);
+    }
+
+    public Customer(UUID userId, String customerNumber, String firstName, String lastName, LocalDate dateOfBirth, String phone, String email, KYCStatus kycStatus, RiskCategory riskCategory) {
         this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
+        this.customerNumber = customerNumber;
         this.firstName = Objects.requireNonNull(firstName, "First name cannot be null");
         this.lastName = Objects.requireNonNull(lastName, "Last name cannot be null");
         this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "Date of birth cannot be null");
@@ -104,6 +112,14 @@ public class Customer {
 
     public void setCustomerId(UUID customerId) {
         this.customerId = customerId;
+    }
+
+    public String getCustomerNumber() {
+        return customerNumber;
+    }
+
+    public void setCustomerNumber(String customerNumber) {
+        this.customerNumber = customerNumber;
     }
 
     public UUID getUserId() {

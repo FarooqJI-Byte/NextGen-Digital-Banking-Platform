@@ -50,7 +50,7 @@ export const AskAIBar = ({
         <input
           type="text"
           className="ask-ai-bar__input"
-          placeholder={isDisabled ? "Ask NextGen AI (Coming soon for this view)..." : "Ask NextGen AI e.g. 'Why was I marked medium risk?'..."}
+          placeholder={isDisabled ? "Ask NextGen AI (Coming soon for this view)..." : "Ask NextGen AI about loan eligibility and risk factors..."}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={isDisabled}

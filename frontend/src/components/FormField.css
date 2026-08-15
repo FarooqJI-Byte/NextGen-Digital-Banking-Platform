@@ -11,10 +11,10 @@
 .form-field__label {
   font-family: var(--font-body);
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  font-weight: 700;
+  color: #1E293B;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .form-field__input {
@@ -27,6 +27,11 @@
   font-size: 0.9375rem;
   color: var(--color-ink-900);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-field__input::placeholder {
+  color: #64748B;
+  font-weight: 400;
 }
 
 .form-field__input:focus {
@@ -46,6 +51,6 @@
 .form-field__error-message {
   font-size: 0.8125rem;
   color: var(--color-danger-600);
-  font-weight: 500;
+  font-weight: 600;
   margin-top: 2px;
 }

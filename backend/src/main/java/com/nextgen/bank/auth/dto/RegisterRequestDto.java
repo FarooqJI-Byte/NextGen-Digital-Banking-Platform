@@ -3,7 +3,6 @@ package com.nextgen.bank.auth.dto;
 import com.nextgen.bank.common.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -23,7 +22,9 @@ public record RegisterRequestDto(
         )
         String password,
 
-        @NotNull(message = "Role is required")
         UserRole role
 ) {
+    public RegisterRequestDto(String username, String email, String password) {
+        this(username, email, password, UserRole.CUSTOMER);
+    }
 }

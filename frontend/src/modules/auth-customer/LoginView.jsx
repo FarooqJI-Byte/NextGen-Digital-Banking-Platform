@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
 import { FormField } from '../../components/FormField.jsx';
 import { Button } from '../../components/Button.jsx';
+import { IconAlertTriangle } from '../../components/Icons.jsx';
 import './LoginView.css';
 
-export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
+export const LoginView = ({ onNavigateToRegister }) => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const validate = () => {
     const errs = {};
@@ -28,23 +29,20 @@ export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
     e.preventDefault();
     setServerError('');
 
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
 
     setIsSubmitting(true);
     try {
-      const response = await login(username, password);
-      if (typeof onLoginSuccess === 'function') {
-        onLoginSuccess(response);
-      }
+      await login(username, password, 'CUSTOMER');
     } catch (err) {
-      if (err.statusCode === 423) {
-        setServerError('Account is temporarily locked due to 5 failed login attempts. Please try again after 15 minutes.');
-      } else if (err.statusCode === 401) {
-        setServerError('Invalid username or password. Please try again.');
+      if (err.statusCode === 401) {
+        setServerError('Invalid username or password.');
+      } else if (err.statusCode === 423) {
+        setServerError('Account locked due to 5 failed attempts. Please wait 15 minutes.');
+      } else if (err.statusCode === 403) {
+        setServerError('Account is disabled. Please contact customer support.');
       } else {
-        setServerError(err.message || 'Unable to sign in. Please try again later.');
+        setServerError(err.message || 'Authentication failed. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -56,15 +54,17 @@ export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-brand">
-            <span className="auth-brand__badge">NEXTGEN BANKING</span>
+            <span className="auth-brand__badge">NEXTGEN DIGITAL BANKING</span>
           </div>
-          <h1 className="auth-title">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to access your digital banking account</p>
+          <h1 className="auth-title">Customer Banking</h1>
+          <p className="auth-subtitle">
+            Sign in to access your personal digital banking account
+          </p>
         </div>
 
         {serverError && (
-          <div className="auth-error-banner" role="alert">
-            <span>⚠️</span>
+          <div className="auth-error-banner" role="alert" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <IconAlertTriangle size={18} />
             <span>{serverError}</span>
           </div>
         )}
@@ -75,7 +75,7 @@ export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
             label="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter your username"
+            placeholder="Enter username"
             error={errors.username}
             required
           />
@@ -86,7 +86,7 @@ export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder="Enter password"
             error={errors.password}
             required
           />
@@ -98,7 +98,7 @@ export const LoginView = ({ onNavigateToRegister, onLoginSuccess }) => {
               disabled={isSubmitting}
               className="w-full"
             >
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
+              {isSubmitting ? 'Authenticating...' : 'Sign In'}
             </Button>
           </div>
         </form>

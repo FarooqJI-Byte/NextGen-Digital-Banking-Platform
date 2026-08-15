@@ -36,6 +36,17 @@ Thumbs.db
 *.tmp
 _pdf_extracted.txt
 
-# Environment variables
+# Environment variables & local configuration
 .env
 .env.local
+.env.*
+*.env
+!.env.example
+!backend/.env.example
+application-local.yml
+application-local.properties
+backend/application-local.yml
+backend/application-local.properties
+
+# Runtime KYC uploads
+/backend/data/

@@ -2,6 +2,7 @@ package com.nextgen.bank.customer.repository;
 
 import com.nextgen.bank.customer.domain.KYCDocument;
 import com.nextgen.bank.customer.domain.enums.DocumentType;
+import com.nextgen.bank.customer.domain.enums.VerificationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,6 +14,8 @@ import java.util.UUID;
 public interface KYCDocumentRepository extends JpaRepository<KYCDocument, UUID> {
 
     List<KYCDocument> findByCustomerId(UUID customerId);
+
+    List<KYCDocument> findByVerificationStatus(VerificationStatus verificationStatus);
 
     Optional<KYCDocument> findByCustomerIdAndDocumentType(UUID customerId, DocumentType documentType);
 

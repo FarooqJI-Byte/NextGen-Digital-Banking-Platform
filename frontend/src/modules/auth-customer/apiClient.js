@@ -40,8 +40,10 @@ export async function request(endpoint, options = {}) {
     ? endpoint
     : `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  const isFormData = options.body instanceof FormData;
+
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
   };
 
@@ -55,7 +57,7 @@ export async function request(endpoint, options = {}) {
     headers,
   };
 
-  if (config.body && typeof config.body === 'object') {
+  if (!isFormData && config.body && typeof config.body === 'object') {
     config.body = JSON.stringify(config.body);
   }
 
@@ -118,6 +120,7 @@ export async function request(endpoint, options = {}) {
 export const apiClient = {
   get: (endpoint, options = {}) => request(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'POST', body }),
+  postFormData: (endpoint, formData, options = {}) => request(endpoint, { ...options, method: 'POST', body: formData }),
   put: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'PUT', body }),
   delete: (endpoint, options = {}) => request(endpoint, { ...options, method: 'DELETE' }),
 };

@@ -1,6 +1,13 @@
 export { apiClient, getAuthToken, setAuthToken, clearAuthToken } from './apiClient.js';
 export { authApi } from './authApi.js';
 export { customerApi } from './customerApi.js';
+export { adminApi } from './adminApi.js';
 export { AuthContext, AuthProvider, useAuth } from './AuthContext.jsx';
 export { LoginView } from './LoginView.jsx';
 export { RegisterView } from './RegisterView.jsx';
+export { CustomerProfileView } from './CustomerProfileView.jsx';
+export { CreateProfileModal } from './CreateProfileModal.jsx';
+export { KycSubmissionModal } from './KycSubmissionModal.jsx';
+export { StaffKycView } from './StaffKycView.jsx';
+export { AdminStaffManagementView } from './AdminStaffManagementView.jsx';
+export { StaffActivationView } from './StaffActivationView.jsx';

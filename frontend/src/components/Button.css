@@ -36,6 +36,18 @@
   background-color: var(--color-cream-100);
 }
 
+.bank-btn--inverse {
+  background-color: transparent;
+  border-color: var(--color-pine-800);
+  color: var(--color-text-inverse);
+}
+
+.bank-btn--inverse:hover:not(:disabled) {
+  background-color: var(--color-pine-800);
+  border-color: var(--color-gold-500);
+  color: var(--color-gold-500);
+}
+
 .bank-btn--destructive {
   background-color: transparent;
   border-color: var(--color-danger-600);

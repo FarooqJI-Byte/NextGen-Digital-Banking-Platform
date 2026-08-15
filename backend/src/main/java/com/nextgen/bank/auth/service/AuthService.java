@@ -9,5 +9,7 @@ public interface AuthService {
 
     RegisterResponseDto register(RegisterRequestDto requestDto);
 
-    LoginResponseDto login(LoginRequestDto requestDto, String ipAddress, String userAgent);
+    LoginResponseDto customerLogin(LoginRequestDto requestDto, String ipAddress, String userAgent);
+
+    LoginResponseDto staffLogin(LoginRequestDto requestDto, String ipAddress, String userAgent);
 }

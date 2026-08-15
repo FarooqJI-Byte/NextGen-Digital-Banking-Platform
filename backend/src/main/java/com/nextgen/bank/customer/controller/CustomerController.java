@@ -3,6 +3,7 @@ package com.nextgen.bank.customer.controller;
 import com.nextgen.bank.auth.domain.User;
 import com.nextgen.bank.auth.repository.UserRepository;
 import com.nextgen.bank.common.exception.BusinessException;
+import com.nextgen.bank.customer.domain.enums.DocumentType;
 import com.nextgen.bank.customer.dto.CreateCustomerProfileRequestDto;
 import com.nextgen.bank.customer.dto.CustomerProfileResponseDto;
 import com.nextgen.bank.customer.dto.KYCSubmissionRequestDto;
@@ -11,6 +12,7 @@ import com.nextgen.bank.customer.service.CustomerService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -18,8 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -59,7 +63,22 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/kyc")
+    @PostMapping(value = "/kyc", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<KYCSubmissionResponseDto> uploadKyc(
+            @RequestParam("documentType") DocumentType documentType,
+            @RequestParam("documentNumber") String documentNumber,
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request,
+            Authentication authentication
+    ) {
+        UUID authenticatedUserId = getAuthenticatedUserId(request, authentication);
+        KYCSubmissionResponseDto response = customerService.uploadKycDocument(documentType, documentNumber, file, authenticatedUserId);
+        return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+    }
+
+    @PostMapping(value = "/kyc", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<KYCSubmissionResponseDto> submitKyc(

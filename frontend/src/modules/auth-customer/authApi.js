@@ -1,14 +1,39 @@
 import { apiClient } from './apiClient.js';
 
-/**
- * Authenticates user credentials against the banking auth API.
- * @param {string} username - Account username
- * @param {string} password - Raw account password
- * @returns {Promise<{accessToken: string, refreshToken: string, tokenType: string, expiresIn: number}>}
- */
-export async function login(username, password) {
+export async function register(payload) {
+  return apiClient.post('/auth/register', {
+    username: payload.username.trim(),
+    email: payload.email.trim(),
+    password: payload.password,
+    role: 'CUSTOMER',
+  }, { skipAuth: true });
+}
+
+export async function generateOtp({ identifier, purpose }) {
+  return apiClient.post('/auth/otp/generate', {
+    identifier: identifier.trim(),
+    purpose,
+  }, { skipAuth: true });
+}
+
+export async function verifyOtp({ identifier, purpose, otp }) {
+  return apiClient.post('/auth/otp/verify', {
+    identifier: identifier.trim(),
+    purpose,
+    otp: otp.trim(),
+  }, { skipAuth: true });
+}
+
+export async function resendOtp({ identifier, purpose }) {
+  return apiClient.post('/auth/otp/resend', {
+    identifier: identifier.trim(),
+    purpose,
+  }, { skipAuth: true });
+}
+
+export async function customerLogin(username, password) {
   return apiClient.post(
-    '/auth/login',
+    '/auth/customer/login',
     {
       username: username.trim(),
       password,
@@ -17,31 +42,45 @@ export async function login(username, password) {
   );
 }
 
-/**
- * Registers a new user account with default CUSTOMER role.
- * @param {Object} payload
- * @param {string} payload.username
- * @param {string} payload.email
- * @param {string} payload.password
- * @param {string} [payload.role='CUSTOMER']
- * @returns {Promise<{userId: string, username: string, email: string, role: string, createdAt: string}>}
- */
-export async function register({ username, email, password, role = 'CUSTOMER' }) {
+export async function staffLogin(username, password) {
   return apiClient.post(
-    '/auth/register',
+    '/auth/staff/login',
     {
       username: username.trim(),
-      email: email.trim().toLowerCase(),
       password,
-      role,
     },
     { skipAuth: true }
   );
+}
+
+export async function activateStaff({ token, password, confirmPassword }) {
+  return apiClient.post(
+    '/auth/staff/activate',
+    {
+      token: token.trim(),
+      password,
+      confirmPassword,
+    },
+    { skipAuth: true }
+  );
+}
+
+export async function login(username, password, portal = 'CUSTOMER') {
+  if (portal === 'STAFF' || portal === 'ADMIN') {
+    return staffLogin(username, password);
+  }
+  return customerLogin(username, password);
 }
 
 export const authApi = {
-  login,
   register,
+  generateOtp,
+  verifyOtp,
+  resendOtp,
+  login,
+  customerLogin,
+  staffLogin,
+  activateStaff,
 };
 
 export default authApi;

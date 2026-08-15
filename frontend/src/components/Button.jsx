@@ -3,7 +3,7 @@ import './Button.css';
 
 /**
  * Button Component
- * Supports 'primary', 'secondary', and 'destructive' variants.
+ * Supports 'primary', 'secondary', 'destructive', and 'inverse' variants.
  */
 export const Button = ({
   children,
@@ -11,9 +11,10 @@ export const Button = ({
   disabled = false,
   onClick,
   type = 'button',
-  className = ''
+  className = '',
+  style = {}
 }) => {
-  const normalizedVariant = ['primary', 'secondary', 'destructive'].includes(variant) ? variant : 'primary';
+  const normalizedVariant = ['primary', 'secondary', 'destructive', 'inverse'].includes(variant) ? variant : 'primary';
 
   return (
     <button
@@ -21,6 +22,7 @@ export const Button = ({
       className={`bank-btn bank-btn--${normalizedVariant} ${className}`}
       disabled={disabled}
       onClick={onClick}
+      style={style}
     >
       {children}
     </button>

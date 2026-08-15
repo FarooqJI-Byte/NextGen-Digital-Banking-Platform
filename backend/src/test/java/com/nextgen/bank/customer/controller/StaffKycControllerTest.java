@@ -6,8 +6,12 @@ import com.nextgen.bank.auth.repository.UserRepository;
 import com.nextgen.bank.common.enums.KYCStatus;
 import com.nextgen.bank.common.exception.BusinessException;
 import com.nextgen.bank.common.exception.GlobalExceptionHandler;
+import com.nextgen.bank.customer.domain.enums.DocumentType;
+import com.nextgen.bank.customer.domain.enums.RiskCategory;
 import com.nextgen.bank.customer.dto.KYCVerificationRequestDto;
 import com.nextgen.bank.customer.dto.KYCVerificationResponseDto;
+import com.nextgen.bank.customer.dto.PendingKycItemDto;
+import com.nextgen.bank.customer.dto.StaffCustomerKycDetailDto;
 import com.nextgen.bank.customer.service.CustomerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,12 +28,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -66,6 +73,64 @@ class StaffKycControllerTest {
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_BANK_STAFF"))
         );
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/staff/kyc/pending should return 200 OK with pending queue items")
+    void testGetPendingKycQueue_Success() throws Exception {
+        PendingKycItemDto item = new PendingKycItemDto(
+                customerId,
+                "CUST-7K4P9M2Q",
+                "John Doe",
+                "john.doe@example.com",
+                "+919876543210",
+                KYCStatus.PENDING,
+                UUID.randomUUID(),
+                DocumentType.PAN,
+                "uploads/kyc/doc_123.jpg",
+                Instant.now()
+        );
+
+        when(customerService.getPendingKycQueue()).thenReturn(List.of(item));
+
+        mockMvc.perform(get("/api/v1/staff/kyc/pending")
+                        .requestAttr("authenticatedUserId", staffUserId)
+                        .principal(staffPrincipal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].customerId").value(customerId.toString()))
+                .andExpect(jsonPath("$[0].customerNumber").value("CUST-7K4P9M2Q"))
+                .andExpect(jsonPath("$[0].customerName").value("John Doe"))
+                .andExpect(jsonPath("$[0].documentType").value("PAN"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/staff/kyc/{customerId} should return 200 OK with detailed customer KYC information")
+    void testGetStaffCustomerKycDetail_Success() throws Exception {
+        StaffCustomerKycDetailDto detail = new StaffCustomerKycDetailDto(
+                customerId,
+                "CUST-7K4P9M2Q",
+                "John",
+                "Doe",
+                LocalDate.of(1990, 5, 15),
+                "john.doe@example.com",
+                "+919876543210",
+                KYCStatus.PENDING,
+                RiskCategory.MEDIUM,
+                Instant.now(),
+                Collections.emptyList(),
+                Collections.emptyList()
+        );
+
+        when(customerService.getStaffCustomerKycDetail(customerId)).thenReturn(detail);
+
+        mockMvc.perform(get("/api/v1/staff/kyc/" + customerId)
+                        .requestAttr("authenticatedUserId", staffUserId)
+                        .principal(staffPrincipal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customerId").value(customerId.toString()))
+                .andExpect(jsonPath("$.customerNumber").value("CUST-7K4P9M2Q"))
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Doe"));
     }
 
     @Test

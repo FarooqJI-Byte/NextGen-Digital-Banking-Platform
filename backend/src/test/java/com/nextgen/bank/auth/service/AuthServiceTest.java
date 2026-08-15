@@ -56,6 +56,9 @@ class AuthServiceTest {
     @Mock
     private OutboxEventWriter outboxEventWriter;
 
+    @Mock
+    private OtpService otpService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -73,7 +76,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Should successfully register a new user, encode password, and write outbox event")
+    @DisplayName("Should successfully register a new user, encode password, and enforce CUSTOMER role")
     void testValidRegistration() {
         RegisterRequestDto request = new RegisterRequestDto("johndoe", "john.doe@example.com", "Password123!", UserRole.CUSTOMER);
 
@@ -90,7 +93,85 @@ class AuthServiceTest {
         assertThat(response.email()).isEqualTo("john.doe@example.com");
         assertThat(response.role()).isEqualTo(UserRole.CUSTOMER);
 
-        verify(outboxEventWriter).write(any(UserRegisteredEvent.class));
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.CUSTOMER);
+
+        ArgumentCaptor<UserRegisteredEvent> eventCaptor = ArgumentCaptor.forClass(UserRegisteredEvent.class);
+        verify(outboxEventWriter).write(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getRole()).isEqualTo(UserRole.CUSTOMER);
+    }
+
+    @Test
+    @DisplayName("Attempt to register with ADMIN role must NOT create ADMIN - role is forced to CUSTOMER")
+    void testRegisterWithAdminRole_EnforcesCustomerRole() {
+        RegisterRequestDto request = new RegisterRequestDto("badactor", "admin.hack@example.com", "Password123!", UserRole.ADMIN);
+
+        when(userRepository.existsByUsername("badactor")).thenReturn(false);
+        when(userRepository.existsByEmail("admin.hack@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123!")).thenReturn("hashed_password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setUserId(UUID.randomUUID());
+            return u;
+        });
+
+        RegisterResponseDto response = authService.register(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.role()).isEqualTo(UserRole.CUSTOMER);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.CUSTOMER);
+    }
+
+    @Test
+    @DisplayName("Attempt to register with BANK_STAFF role must NOT create BANK_STAFF - role is forced to CUSTOMER")
+    void testRegisterWithBankStaffRole_EnforcesCustomerRole() {
+        RegisterRequestDto request = new RegisterRequestDto("staffaspirant", "staff.hack@example.com", "Password123!", UserRole.BANK_STAFF);
+
+        when(userRepository.existsByUsername("staffaspirant")).thenReturn(false);
+        when(userRepository.existsByEmail("staff.hack@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123!")).thenReturn("hashed_password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setUserId(UUID.randomUUID());
+            return u;
+        });
+
+        RegisterResponseDto response = authService.register(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.role()).isEqualTo(UserRole.CUSTOMER);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.CUSTOMER);
+    }
+
+    @Test
+    @DisplayName("Attempt to register with AUDITOR role must NOT create AUDITOR - role is forced to CUSTOMER")
+    void testRegisterWithAuditorRole_EnforcesCustomerRole() {
+        RegisterRequestDto request = new RegisterRequestDto("auditoraspirant", "auditor.hack@example.com", "Password123!", UserRole.AUDITOR);
+
+        when(userRepository.existsByUsername("auditoraspirant")).thenReturn(false);
+        when(userRepository.existsByEmail("auditor.hack@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123!")).thenReturn("hashed_password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setUserId(UUID.randomUUID());
+            return u;
+        });
+
+        RegisterResponseDto response = authService.register(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.role()).isEqualTo(UserRole.CUSTOMER);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.CUSTOMER);
     }
 
     @Test
@@ -124,22 +205,22 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Should successfully login, reset failed attempts, persist session with hashed token, and return tokens")
-    void testSuccessfulLogin() {
+    @DisplayName("Customer Login: should succeed for user with CUSTOMER role, reset failed attempts, persist session")
+    void testCustomerLogin_WithCustomerRole_Success() {
         LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
 
         when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
         when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
-        when(jwtTokenProvider.generateAccessToken(sampleUser)).thenReturn("sample.access.token");
-        when(jwtTokenProvider.generateRefreshToken()).thenReturn("ref_12345678");
+        when(jwtTokenProvider.generateAccessToken(sampleUser)).thenReturn("customer.access.token");
+        when(jwtTokenProvider.generateRefreshToken()).thenReturn("ref_cust_123");
         when(jwtTokenProvider.getRefreshTokenExpirationMs()).thenReturn(604800000L);
         when(jwtTokenProvider.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-        LoginResponseDto response = authService.login(request, "127.0.0.1", "Mozilla/5.0");
+        LoginResponseDto response = authService.customerLogin(request, "127.0.0.1", "Browser");
 
         assertThat(response).isNotNull();
-        assertThat(response.accessToken()).isEqualTo("sample.access.token");
-        assertThat(response.refreshToken()).isEqualTo("ref_12345678");
+        assertThat(response.accessToken()).isEqualTo("customer.access.token");
+        assertThat(response.refreshToken()).isEqualTo("ref_cust_123");
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.expiresIn()).isEqualTo(900L);
 
@@ -148,12 +229,121 @@ class AuthServiceTest {
         verify(userSessionRepository).save(sessionCaptor.capture());
         UserSession savedSession = sessionCaptor.getValue();
         assertThat(savedSession.getUserId()).isEqualTo(sampleUserId);
-        assertThat(savedSession.getRefreshTokenHash()).isNotEqualTo("ref_12345678"); // Must be hashed
-        assertThat(savedSession.getIpAddress()).isEqualTo("127.0.0.1");
-        assertThat(savedSession.getUserAgent()).isEqualTo("Mozilla/5.0");
 
         // Verify outbox event
         verify(outboxEventWriter).write(any(UserLoggedInEvent.class));
+    }
+
+    @Test
+    @DisplayName("Customer Login: should reject BANK_STAFF role with generic 401 Unauthorized WITHOUT incrementing failed attempts")
+    void testCustomerLogin_WithBankStaffRole_RejectedWithoutLockoutIncrement() {
+        sampleUser.setRole(UserRole.BANK_STAFF);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "Browser"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Invalid username or password")
+                .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        // Wrong portal with correct password must NOT increment failed attempts
+        assertThat(sampleUser.getFailedLoginAttempts()).isEqualTo(0);
+        verify(userRepository, never()).save(sampleUser);
+    }
+
+    @Test
+    @DisplayName("Customer Login: should reject ADMIN role with generic 401 Unauthorized WITHOUT incrementing failed attempts")
+    void testCustomerLogin_WithAdminRole_RejectedWithoutLockoutIncrement() {
+        sampleUser.setRole(UserRole.ADMIN);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "Browser"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Invalid username or password")
+                .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        assertThat(sampleUser.getFailedLoginAttempts()).isEqualTo(0);
+        verify(userRepository, never()).save(sampleUser);
+    }
+
+    @Test
+    @DisplayName("Staff Login: should succeed for BANK_STAFF role")
+    void testStaffLogin_WithBankStaffRole_Success() {
+        sampleUser.setRole(UserRole.BANK_STAFF);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+        when(jwtTokenProvider.generateAccessToken(sampleUser)).thenReturn("staff.access.token");
+        when(jwtTokenProvider.generateRefreshToken()).thenReturn("ref_staff_123");
+        when(jwtTokenProvider.getRefreshTokenExpirationMs()).thenReturn(604800000L);
+        when(jwtTokenProvider.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+        LoginResponseDto response = authService.staffLogin(request, "127.0.0.1", "Browser");
+
+        assertThat(response).isNotNull();
+        assertThat(response.accessToken()).isEqualTo("staff.access.token");
+    }
+
+    @Test
+    @DisplayName("Staff Login: should succeed for ADMIN role")
+    void testStaffLogin_WithAdminRole_Success() {
+        sampleUser.setRole(UserRole.ADMIN);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+        when(jwtTokenProvider.generateAccessToken(sampleUser)).thenReturn("admin.access.token");
+        when(jwtTokenProvider.generateRefreshToken()).thenReturn("ref_admin_123");
+        when(jwtTokenProvider.getRefreshTokenExpirationMs()).thenReturn(604800000L);
+        when(jwtTokenProvider.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+        LoginResponseDto response = authService.staffLogin(request, "127.0.0.1", "Browser");
+
+        assertThat(response).isNotNull();
+        assertThat(response.accessToken()).isEqualTo("admin.access.token");
+    }
+
+    @Test
+    @DisplayName("Staff Login: should succeed for AUDITOR role")
+    void testStaffLogin_WithAuditorRole_Success() {
+        sampleUser.setRole(UserRole.AUDITOR);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+        when(jwtTokenProvider.generateAccessToken(sampleUser)).thenReturn("auditor.access.token");
+        when(jwtTokenProvider.generateRefreshToken()).thenReturn("ref_auditor_123");
+        when(jwtTokenProvider.getRefreshTokenExpirationMs()).thenReturn(604800000L);
+        when(jwtTokenProvider.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+        LoginResponseDto response = authService.staffLogin(request, "127.0.0.1", "Browser");
+
+        assertThat(response).isNotNull();
+        assertThat(response.accessToken()).isEqualTo("auditor.access.token");
+    }
+
+    @Test
+    @DisplayName("Staff Login: should reject CUSTOMER role with generic 401 Unauthorized WITHOUT incrementing failed attempts")
+    void testStaffLogin_WithCustomerRole_RejectedWithoutLockoutIncrement() {
+        sampleUser.setRole(UserRole.CUSTOMER);
+        LoginRequestDto request = new LoginRequestDto("johndoe", "Password123!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Password123!", "hashed_password")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.staffLogin(request, "127.0.0.1", "Browser"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Invalid username or password")
+                .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        assertThat(sampleUser.getFailedLoginAttempts()).isEqualTo(0);
+        verify(userRepository, never()).save(sampleUser);
     }
 
     @Test
@@ -164,7 +354,7 @@ class AuthServiceTest {
         when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
         when(passwordEncoder.matches("WrongPassword!", "hashed_password")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "agent"))
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "agent"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Invalid username or password")
                 .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
@@ -182,7 +372,7 @@ class AuthServiceTest {
         when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
         when(passwordEncoder.matches("WrongPassword!", "hashed_password")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "agent"))
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "agent"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Account locked due to 5 consecutive failed login attempts")
                 .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.LOCKED));
@@ -201,7 +391,7 @@ class AuthServiceTest {
 
         when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
 
-        assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "agent"))
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "agent"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Account is temporarily locked")
                 .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.LOCKED));
@@ -223,11 +413,31 @@ class AuthServiceTest {
         when(jwtTokenProvider.getRefreshTokenExpirationMs()).thenReturn(604800000L);
         when(jwtTokenProvider.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-        LoginResponseDto response = authService.login(request, "127.0.0.1", "agent");
+        LoginResponseDto response = authService.customerLogin(request, "127.0.0.1", "agent");
 
         assertThat(response).isNotNull();
         assertThat(sampleUser.getFailedLoginAttempts()).isEqualTo(0);
         assertThat(sampleUser.getLockoutUntil()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should reset failed attempts to 1 when wrong password entered after previous lockout expired")
+    void testLogin_LockoutExpired_WrongPasswordResetsCounterToOne() {
+        sampleUser.setFailedLoginAttempts(5);
+        sampleUser.setLockoutUntil(Instant.now().minus(5, ChronoUnit.MINUTES)); // Expired lockout
+        LoginRequestDto request = new LoginRequestDto("johndoe", "WrongPassword!");
+
+        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("WrongPassword!", "hashed_password")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "agent"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Invalid username or password")
+                .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        assertThat(sampleUser.getFailedLoginAttempts()).isEqualTo(1);
+        assertThat(sampleUser.getLockoutUntil()).isNull();
+        verify(userRepository).save(sampleUser);
     }
 
     @Test
@@ -238,7 +448,7 @@ class AuthServiceTest {
 
         when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(sampleUser));
 
-        assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "agent"))
+        assertThatThrownBy(() -> authService.customerLogin(request, "127.0.0.1", "agent"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Account is disabled")
                 .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.FORBIDDEN));

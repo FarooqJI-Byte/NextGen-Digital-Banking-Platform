@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,40 +71,38 @@ class CustomerControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(customerController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
-
         userId = UUID.randomUUID();
         customerId = UUID.randomUUID();
         authPrincipal = new UsernamePasswordAuthenticationToken(
-                "johndoe",
+                "customer1",
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))
         );
+
+        mockMvc = MockMvcBuilders.standaloneSetup(customerController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
     @Test
-    @DisplayName("POST /api/v1/customers/profile should return 201 Created on valid profile request")
+    @DisplayName("POST /api/v1/customers/profile should return 201 Created on valid input")
     void testCreateProfile_Success() throws Exception {
-        CustomerAddressDto addressDto = new CustomerAddressDto(
-                AddressType.PERMANENT, "123 MG Road", "Bengaluru", "Karnataka", "560001", "India"
-        );
-        NomineeDto nomineeDto = new NomineeDto(
-                "Jane Doe", "Spouse", LocalDate.of(1992, 8, 20), "+919876543211", new BigDecimal("100.00")
-        );
         CreateCustomerProfileRequestDto request = new CreateCustomerProfileRequestDto(
-                "John", "Doe", LocalDate.of(1990, 5, 15), "+919876543210", "john.doe@example.com",
-                List.of(addressDto), List.of(nomineeDto)
+                "John",
+                "Doe",
+                LocalDate.of(1990, 5, 15),
+                "+919876543210",
+                "john.doe@example.com",
+                List.of(new CustomerAddressDto(AddressType.PERMANENT, "123 MG Road", "Bengaluru", "Karnataka", "560001", "India")),
+                List.of(new NomineeDto("Jane Doe", "Spouse", LocalDate.of(1992, 8, 20), "+919876543211", new BigDecimal("100.00")))
         );
 
         CustomerProfileResponseDto response = new CustomerProfileResponseDto(
                 customerId, userId, "John", "Doe", LocalDate.of(1990, 5, 15), "+919876543210",
-                "john.doe@example.com", KYCStatus.PENDING, RiskCategory.MEDIUM, List.of(addressDto), List.of(nomineeDto), Instant.now()
+                "john.doe@example.com", KYCStatus.PENDING, RiskCategory.MEDIUM, Collections.emptyList(), Collections.emptyList(), Instant.now()
         );
 
-        when(customerService.createCustomerProfile(any(CreateCustomerProfileRequestDto.class), eq(userId)))
-                .thenReturn(response);
+        when(customerService.createCustomerProfile(any(CreateCustomerProfileRequestDto.class), eq(userId))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/customers/profile")
                         .requestAttr("authenticatedUserId", userId)
@@ -117,7 +117,7 @@ class CustomerControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/customers/profile should return 409 Conflict when profile already exists")
-    void testCreateProfile_Conflict() throws Exception {
+    void testCreateProfile_AlreadyExists_Fails() throws Exception {
         CreateCustomerProfileRequestDto request = new CreateCustomerProfileRequestDto(
                 "John", "Doe", LocalDate.of(1990, 5, 15), "+919876543210", "john.doe@example.com",
                 Collections.emptyList(), Collections.emptyList()
@@ -136,7 +136,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/customers/profile should return 200 OK with authenticated customer's profile")
+    @DisplayName("GET /api/v1/customers/profile should return 200 OK with customer profile")
     void testGetProfile_Success() throws Exception {
         CustomerProfileResponseDto response = new CustomerProfileResponseDto(
                 customerId, userId, "John", "Doe", LocalDate.of(1990, 5, 15), "+919876543210",
@@ -154,7 +154,38 @@ class CustomerControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/customers/kyc should return 202 Accepted on valid KYC document submission")
+    @DisplayName("POST /api/v1/customers/kyc (Multipart) should return 202 Accepted on valid KYC document upload")
+    void testUploadKyc_Success() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "pan_card.pdf",
+                "application/pdf",
+                "%PDF-1.4 test".getBytes()
+        );
+
+        UUID docId = UUID.randomUUID();
+        KYCSubmissionResponseDto response = new KYCSubmissionResponseDto(
+                docId,
+                KYCStatus.PENDING,
+                Instant.now()
+        );
+
+        when(customerService.uploadKycDocument(eq(DocumentType.PAN), eq("ABCDE1234F"), any(), eq(userId)))
+                .thenReturn(response);
+
+        mockMvc.perform(multipart("/api/v1/customers/kyc")
+                        .file(file)
+                        .param("documentType", "PAN")
+                        .param("documentNumber", "ABCDE1234F")
+                        .requestAttr("authenticatedUserId", userId)
+                        .principal(authPrincipal))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.documentId").value(docId.toString()))
+                .andExpect(jsonPath("$.kycStatus").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/customers/kyc (JSON) should return 202 Accepted on valid KYC document submission")
     void testSubmitKyc_Success() throws Exception {
         KYCSubmissionRequestDto request = new KYCSubmissionRequestDto(
                 DocumentType.PAN,

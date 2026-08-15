@@ -68,8 +68,8 @@ export const AuthProvider = ({ children }) => {
     });
   }, [initializeAuth, logout]);
 
-  const login = async (username, password) => {
-    const response = await authApi.login(username, password);
+  const login = async (username, password, portal = 'CUSTOMER') => {
+    const response = await authApi.login(username, password, portal);
     const token = response.accessToken;
     setAuthToken(token);
     setAccessTokenState(token);

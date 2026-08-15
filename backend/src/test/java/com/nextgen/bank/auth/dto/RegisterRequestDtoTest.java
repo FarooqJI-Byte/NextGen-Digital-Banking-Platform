@@ -24,7 +24,7 @@ class RegisterRequestDtoTest {
     }
 
     @Test
-    @DisplayName("Valid registration request should pass all validations (BR-AUTH-001)")
+    @DisplayName("Valid registration request with explicit role should pass validations (BR-AUTH-001)")
     void testValidPassword_Passes() {
         RegisterRequestDto dto = new RegisterRequestDto(
                 "johndoe",
@@ -35,6 +35,20 @@ class RegisterRequestDtoTest {
 
         Set<ConstraintViolation<RegisterRequestDto>> violations = validator.validate(dto);
         assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Valid registration request without role should pass validations")
+    void testValidRegistrationWithoutRole_Passes() {
+        RegisterRequestDto dto = new RegisterRequestDto(
+                "johndoe",
+                "john.doe@example.com",
+                "StrongPass123!"
+        );
+
+        Set<ConstraintViolation<RegisterRequestDto>> violations = validator.validate(dto);
+        assertThat(violations).isEmpty();
+        assertThat(dto.role()).isEqualTo(UserRole.CUSTOMER);
     }
 
     @Test
