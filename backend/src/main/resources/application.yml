@@ -1,6 +1,18 @@
 spring:
   application:
     name: nextgen-banking-backend
+  config:
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+      - "optional:file:backend/.env[.properties]"
+      - "optional:file:application-local.yml"
+      - "optional:file:backend/application-local.yml"
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/nextgen_bank}
     username: ${SPRING_DATASOURCE_USERNAME:bank_admin}
@@ -56,8 +68,23 @@ resilience4j:
       aiLoanService:
         timeoutDuration: 1500ms
 
-# Scheduling for Outbox Relay Worker
+# Application Properties
 app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  storage:
+    kyc-upload-dir: ${KYC_UPLOAD_DIR:./data/kyc-uploads}
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+      username: ${BOOTSTRAP_ADMIN_USERNAME:}
+      email: ${BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
   outbox:
     relay:
       cron: "*/5 * * * * *" # Run every 5 seconds
+  dev-mode: ${APP_DEV_MODE:true}
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
